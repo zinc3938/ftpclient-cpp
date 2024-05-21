@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file FTPClient.cpp
  * @brief implementation of the FTP client class
  * @author Mohamed Amine Mzoughi <mohamed-amine.mzoughi@laposte.net>
@@ -26,8 +26,7 @@ std::string CFTPClient::s_strCurlTraceLogDirectory;
  *
  */
 CFTPClient::CFTPClient(LogFnCallback Logger)
-    :
-      m_bActive(false),
+    : m_bActive(false),
       m_bNoSignal(true),
       m_bInsecure(false),
       m_uPort(0),
@@ -37,14 +36,11 @@ CFTPClient::CFTPClient(LogFnCallback Logger)
       m_iCurlTimeout(0),
       m_bProgressCallbackSet(false),
       m_oLog(std::move(Logger)),
-      m_curlHandle(CurlHandle::instance())
-{
+      m_curlHandle(CurlHandle::instance()) {
    if (!m_oLog) {
       throw std::logic_error{"Invalid logger clb applied"};
    }
 }
-
-
 
 /**
  * @brief destructor of the FTP client object
@@ -81,9 +77,8 @@ CFTPClient::~CFTPClient() {
  *    m_pFTPClient->InitSession("ftp://127.0.0.1", 21, "username", "password");
  * @endcode
  */
-bool CFTPClient::InitSession(const std::string &strHost, const unsigned &uPort, const std::string &strLogin,
-                                   const std::string &strPassword, const FTP_PROTOCOL &eFtpProtocol /* = FTP */,
-                                   const SettingsFlag &eSettingsFlags /* = NO_FLAGS */) {
+bool CFTPClient::InitSession(const std::string &strHost, const unsigned &uPort, const std::string &strLogin, const std::string &strPassword,
+                             const FTP_PROTOCOL &eFtpProtocol /* = FTP */, const SettingsFlag &eSettingsFlags /* = NO_FLAGS */) {
    if (strHost.empty()) {
       if (m_eSettingsFlags & ENABLE_LOG) m_oLog(LOG_ERROR_EMPTY_HOST_MSG);
 
@@ -172,16 +167,14 @@ void CFTPClient::SetProxy(const std::string &strProxy) {
       m_strProxy = strProxy;
 };
 
- /**
+/**
  * @brief sets the HTTP Proxy user and password
  *
  * @param [in] strProxyUserPwd string of the HTTP Proxy user:password
  *
  */
-void CFTPClient::SetProxyUserPwd(const std::string &strProxyUserPwd) {
-   m_strProxyUserPwd = strProxyUserPwd;
-};
-    
+void CFTPClient::SetProxyUserPwd(const std::string &strProxyUserPwd) { m_strProxyUserPwd = strProxyUserPwd; };
+
 /**
  * @brief generates a URI
  *
@@ -201,7 +194,7 @@ std::string CFTPClient::ParseURL(const std::string &strRemoteFile) const {
    std::string strURL = m_strServer + "/" + strRemoteFile;
 
    ReplaceString(strURL, "/", "//");
-   ReplaceString(strURL, " ", "%20"); //fixes folders with spaces not working
+   ReplaceString(strURL, " ", "%20");  // fixes folders with spaces not working
 
    std::string strUri = strURL;
 
@@ -292,7 +285,7 @@ bool CFTPClient::CreateDir(const std::string &strNewDir) const {
    curl_easy_setopt(m_pCurlSession, CURLOPT_NOBODY, 1L);
    curl_easy_setopt(m_pCurlSession, CURLOPT_HEADER, 1L);
    curl_easy_setopt(m_pCurlSession, CURLOPT_FTP_CREATE_MISSING_DIRS, CURLFTP_CREATE_DIR);
-   
+
    /* enable TCP keep-alive for this transfer */
    curl_easy_setopt(m_pCurlSession, CURLOPT_TCP_KEEPALIVE, 0L);
 
@@ -371,7 +364,7 @@ bool CFTPClient::RemoveDir(const std::string &strDir) const {
 
    // Specify target
    curl_easy_setopt(m_pCurlSession, CURLOPT_URL, strRemoteFolder.c_str());
-   
+
    strBuf += strRemoteFolderName;
    headerlist = curl_slist_append(headerlist, strBuf.c_str());
 
@@ -392,6 +385,89 @@ bool CFTPClient::RemoveDir(const std::string &strDir) const {
 
    return bRet;
 }
+
+bool CFTPClient::Rename(const std::string &strOldFile, const std::string &strNewFile) const {
+   if (strOldFile.empty() || strNewFile.empty()) return false;
+
+   if (!m_pCurlSession) {
+      if (m_eSettingsFlags & ENABLE_LOG) m_oLog(LOG_ERROR_CURL_NOT_INIT_MSG);
+
+      return false;
+   }
+   // Reset is mandatory to avoid bad surprises
+   curl_easy_reset(m_pCurlSession);
+
+   struct curl_slist *headerlist = nullptr;
+
+   std::string strRemoteFolder;
+   std::string strRemoteOldFileName;
+   std::string strRemoteNewFileName;
+   std::string strBuf;
+   bool bRet = false;
+
+   if (m_eFtpProtocol == FTP_PROTOCOL::SFTP) {
+      strRemoteFolder = ParseURL("");
+      curl_easy_setopt(m_pCurlSession, CURLOPT_URL, strRemoteFolder.c_str());
+      strRemoteOldFileName = strOldFile;
+      strRemoteNewFileName = strNewFile;
+
+      // Append the rename command
+      strBuf += "rename ";
+      strBuf += strRemoteOldFileName;
+      strBuf += " ";
+      strBuf += strRemoteNewFileName;
+      headerlist = curl_slist_append(headerlist, strBuf.c_str());
+   } else {
+      // Splitting file name
+      std::size_t uFound = strOldFile.find_last_of("/");
+      if (uFound != std::string::npos) {
+         strRemoteFolder      = ParseURL(strOldFile.substr(0, uFound)) + "//";
+         strRemoteOldFileName = strOldFile.substr(uFound + 1);
+      } else  // the file to be renamed is located in the root directory
+      {
+         strRemoteFolder      = ParseURL("");
+         strRemoteOldFileName = strOldFile;
+      }
+
+      std::size_t uFoundNew = strNewFile.find_last_of("/");
+      if (uFoundNew != std::string::npos) {
+				 strRemoteNewFileName = strNewFile.substr(uFoundNew + 1);
+			} else  // the file to be renamed is located in the root directory
+			{
+				 strRemoteNewFileName = strNewFile;
+			}
+      
+
+      // Append the rename command
+      strBuf += "RNFR ";
+      strBuf += strRemoteOldFileName;
+      headerlist = curl_slist_append(headerlist, strBuf.c_str());
+      strBuf.clear();
+      strBuf += "RNTO ";
+      strBuf += strRemoteNewFileName;
+      headerlist = curl_slist_append(headerlist, strBuf.c_str());
+   }
+   // Specify target
+
+   curl_easy_setopt(m_pCurlSession, CURLOPT_URL, strRemoteFolder.c_str());
+   curl_easy_setopt(m_pCurlSession, CURLOPT_POSTQUOTE, headerlist);
+   curl_easy_setopt(m_pCurlSession, CURLOPT_NOBODY, 1L);
+   curl_easy_setopt(m_pCurlSession, CURLOPT_HEADER, 1L);
+
+   CURLcode res = Perform();
+
+   if (res != CURLE_OK) {
+      if (m_eSettingsFlags & ENABLE_LOG)
+         m_oLog(StringFormat(LOG_ERROR_CURL_RENAME_FORMAT, strOldFile.c_str(), strNewFile.c_str(), res, curl_easy_strerror(res)));
+   } else
+      bRet = true;
+
+   // clean up the FTP commands list
+   curl_slist_free_all(headerlist);
+
+   return bRet;
+}
+
 
 /**
  * @brief deletes a remote file

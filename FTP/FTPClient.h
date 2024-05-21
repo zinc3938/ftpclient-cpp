@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @file FTPClient.h
  * @brief libcurl wrapper for FTP requests
  *
@@ -152,6 +152,8 @@ class CFTPClient {
 
    bool RemoveDir(const std::string &strDir) const;
 
+   bool Rename(const std::string &strOldFile, const std::string &strNewFile) const;
+
    bool RemoveFile(const std::string &strRemoteFile) const;
 
    /* Checks a single file's size and mtime from an FTP server */
@@ -279,6 +281,7 @@ inline CFTPClient::SettingsFlag operator|(CFTPClient::SettingsFlag a, CFTPClient
 #define LOG_ERROR_CURL_NOT_INIT_MSG                       \
    "[FTPClient][Error] Curl session is not initialized !" \
    " Use InitSession() before."
+#define LOG_ERROR_CURL_RENAME_FORMAT "[FTPClient][Error] Unable to rename file %s to %s (Error = %d | %s)."
 #define LOG_ERROR_CURL_REMOVE_FORMAT "[FTPClient][Error] Unable to remove file %s (Error = %d | %s)."
 #define LOG_ERROR_CURL_VERIFYURL_FORMAT                                        \
    "[FTPClient][Error] Unable to connect to the remote folder %s (Error = %d " \
