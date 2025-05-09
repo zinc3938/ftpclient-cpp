@@ -19,7 +19,7 @@
 #include <cstdlib>
 #include <cstring>  // strerror, strlen, memcpy, strcpy
 #include <ctime>
-#ifndef LINUX
+#ifndef __linux__
 #include <direct.h>  // mkdir
 #endif
 #include <stdarg.h>  // va_start, etc.
