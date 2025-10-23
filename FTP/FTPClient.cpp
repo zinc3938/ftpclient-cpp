@@ -1057,10 +1057,8 @@ bool CFTPClient::AppendFile(const std::string &strLocalFile, const size_t fileOf
       curl_easy_setopt(m_pCurlSession, CURLOPT_UPLOAD, 1L);
 
       
-      // 删除或注释掉以下行
-      //curl_easy_setopt(m_pCurlSession, CURLOPT_APPEND, 1L);
-      // 添加续传偏移设置
-      curl_easy_setopt(m_pCurlSession, CURLOPT_RESUME_FROM_LARGE, static_cast<curl_off_t>(fileOffset));
+      curl_easy_setopt(m_pCurlSession, CURLOPT_APPEND, 1L);
+      //curl_easy_setopt(m_pCurlSession, CURLOPT_RESUME_FROM_LARGE, static_cast<curl_off_t>(fileOffset));
 
 
       if (bCreateDir) curl_easy_setopt(m_pCurlSession, CURLOPT_FTP_CREATE_MISSING_DIRS, CURLFTP_CREATE_DIR);
